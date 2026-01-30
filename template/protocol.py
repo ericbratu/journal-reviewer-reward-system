@@ -20,57 +20,89 @@
 import typing
 import bittensor as bt
 
-# TODO(developer): Rewrite with your protocol definition.
-
-# This is the protocol for the dummy miner and validator.
-# It is a simple request-response protocol where the validator sends a request
-# to the miner, and the miner responds with a dummy response.
+# Protocol for journal review quality evaluation subnet
+# Miners submit historical peer reviews from OpenReview
+# Validators score review quality using LLM-based rubric evaluation
 
 # ---- miner ----
 # Example usage:
-#   def dummy( synapse: Dummy ) -> Dummy:
-#       synapse.dummy_output = synapse.dummy_input + 1
+#   def submit_review(synapse: ReviewSubmission) -> ReviewSubmission:
+#       review_data = load_next_review()
+#       synapse.paper_id = review_data['paper_id']
+#       synapse.review_text = review_data['review_text']
 #       return synapse
-#   axon = bt.axon().attach( dummy ).serve(netuid=...).start()
+#   axon = bt.axon().attach(submit_review).serve(netuid=...).start()
 
 # ---- validator ---
 # Example usage:
 #   dendrite = bt.dendrite()
-#   dummy_output = dendrite.query( Dummy( dummy_input = 1 ) )
-#   assert dummy_output == 2
+#   responses = dendrite.query(ReviewSubmission(current_paper_id="paper_123"))
+#   scores = evaluate_reviews(responses)
+
+
+class ReviewSubmission(bt.Synapse):
+    """
+    Protocol for submitting and evaluating peer review quality.
+    
+    Miners submit historical reviews from OpenReview dataset.
+    Validators score reviews using structured LLM rubric.
+    
+    Attributes:
+    - current_paper_id: Paper ID that validator is requesting reviews for (validator sets)
+    - paper_id: Paper ID for the submitted review (miner fills)
+    - review_text: Full text of the peer review (miner fills)
+    - review_metadata: Additional context about the review (miner fills)
+    - review_score: Structured rubric scores from LLM evaluation (validator fills)
+    - final_score: Aggregated quality score 0-100 (validator fills)
+    """
+
+    # Validator request: which paper to submit reviews for
+    current_paper_id: typing.Optional[str] = None
+
+    # Miner response: review submission
+    paper_id: typing.Optional[str] = None
+    review_text: typing.Optional[str] = None
+    review_metadata: typing.Optional[dict] = None
+
+    # Validator evaluation results
+    review_score: typing.Optional[dict] = None
+    final_score: typing.Optional[float] = None
+
+    def deserialize(self) -> typing.Optional[dict]:
+        """
+        Deserialize the review submission. Returns the complete review data
+        including metadata and scores if available.
+
+        Returns:
+        - dict: Complete review data with all fields, or None if no review submitted.
+
+        Example:
+        >>> synapse = ReviewSubmission(current_paper_id="paper_123")
+        >>> synapse.paper_id = "paper_123"
+        >>> synapse.review_text = "This paper presents..."
+        >>> synapse.deserialize()
+        {'paper_id': 'paper_123', 'review_text': 'This paper presents...', ...}
+        """
+        if self.paper_id is None:
+            return None
+            
+        return {
+            "paper_id": self.paper_id,
+            "review_text": self.review_text,
+            "review_metadata": self.review_metadata,
+            "review_score": self.review_score,
+            "final_score": self.final_score,
+        }
 
 
 class Dummy(bt.Synapse):
     """
-    A simple dummy protocol representation which uses bt.Synapse as its base.
-    This protocol helps in handling dummy request and response communication between
-    the miner and the validator.
-
-    Attributes:
-    - dummy_input: An integer value representing the input request sent by the validator.
-    - dummy_output: An optional integer value which, when filled, represents the response from the miner.
+    Legacy dummy protocol - kept for backward compatibility with tests.
+    Use ReviewSubmission for actual subnet operations.
     """
 
-    # Required request input, filled by sending dendrite caller.
     dummy_input: int
-
-    # Optional request output, filled by receiving axon.
     dummy_output: typing.Optional[int] = None
 
     def deserialize(self) -> int:
-        """
-        Deserialize the dummy output. This method retrieves the response from
-        the miner in the form of dummy_output, deserializes it and returns it
-        as the output of the dendrite.query() call.
-
-        Returns:
-        - int: The deserialized response, which in this case is the value of dummy_output.
-
-        Example:
-        Assuming a Dummy instance has a dummy_output value of 5:
-        >>> dummy_instance = Dummy(dummy_input=4)
-        >>> dummy_instance.dummy_output = 5
-        >>> dummy_instance.deserialize()
-        5
-        """
         return self.dummy_output
