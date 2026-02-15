@@ -14,7 +14,6 @@ class MockSubtensor(bt.MockSubtensor):
         if not self.subnet_exists(netuid):
             self.create_subnet(netuid)
 
-        # Register ourself (the validator) as a neuron at uid=0
         if wallet is not None:
             self.force_register_neuron(
                 netuid=netuid,
@@ -24,7 +23,6 @@ class MockSubtensor(bt.MockSubtensor):
                 stake=100000,
             )
 
-        # Register n mock neurons who will be miners
         for i in range(1, n + 1):
             self.force_register_neuron(
                 netuid=netuid,
@@ -52,9 +50,6 @@ class MockMetagraph(bt.metagraph):
 
 
 class MockDendrite(bt.dendrite):
-    """
-    Replaces a real bittensor network request with a mock request that just returns some static response for all axons that are passed and adds some random delay.
-    """
 
     def __init__(self, wallet):
         super().__init__(wallet)
@@ -72,32 +67,32 @@ class MockDendrite(bt.dendrite):
             raise NotImplementedError("Streaming not implemented yet.")
 
         async def query_all_axons(streaming: bool):
-            """Queries all axons for responses."""
 
             async def single_axon_response(i, axon):
-                """Queries a single axon for a response."""
 
                 start_time = time.time()
                 s = synapse.copy()
-                # Attach some more required data so it looks real
                 s = self.preprocess_synapse_for_request(axon, s, timeout)
-                # We just want to mock the response, so we'll just fill in some data
                 process_time = random.random()
                 if process_time < timeout:
                     s.dendrite.process_time = str(time.time() - start_time)
-                    # Update the status code and status message of the dendrite to match the axon
-                    # TODO (developer): replace with your own expected synapse data
-                    s.dummy_output = s.dummy_input * 2
+                    if hasattr(s, 'dummy_input'):
+                        s.dummy_output = s.dummy_input * 2
+                    elif hasattr(s, 'paper_id'):
+                        s.paper_id = f"mock_paper_{i}"
+                        s.review_text = f"Mock review {i}: This is a simulated peer review for testing."
+                        s.review_metadata = {"mock": True, "miner_id": i}
+                    
                     s.dendrite.status_code = 200
                     s.dendrite.status_message = "OK"
                     synapse.dendrite.process_time = str(process_time)
                 else:
-                    s.dummy_output = 0
+                    if hasattr(s, 'dummy_input'):
+                        s.dummy_output = 0
                     s.dendrite.status_code = 408
                     s.dendrite.status_message = "Timeout"
                     synapse.dendrite.process_time = str(timeout)
 
-                # Return the updated synapse object after deserializing if requested
                 if deserialize:
                     return s.deserialize()
                 else:
@@ -113,10 +108,4 @@ class MockDendrite(bt.dendrite):
         return await query_all_axons(streaming)
 
     def __str__(self) -> str:
-        """
-        Returns a string representation of the Dendrite object.
-
-        Returns:
-            str: The string representation of the Dendrite object in the format "dendrite(<user_wallet_address>)".
-        """
         return "MockDendrite({})".format(self.keypair.ss58_address)
