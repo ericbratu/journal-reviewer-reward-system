@@ -156,6 +156,20 @@ def add_miner_args(cls, parser):
     )
 
     parser.add_argument(
+        "--data_path",
+        type=str,
+        help="Path to processed review data directory.",
+        default="data/processed",
+    )
+
+    parser.add_argument(
+        "--miner_id",
+        type=int,
+        help="Miner ID for loading assigned reviews (0-15 typically).",
+        default=0,
+    )
+
+    parser.add_argument(
         "--wandb.project_name",
         type=str,
         default="template-miners",
@@ -199,6 +213,20 @@ def add_validator_args(cls, parser):
         type=int,
         help="The number of miners to query in a single step.",
         default=50,
+    )
+
+    parser.add_argument(
+        "--data_path",
+        type=str,
+        help="Path to processed review data directory (for paper metadata).",
+        default="data/processed",
+    )
+
+    parser.add_argument(
+        "--llm_model",
+        type=str,
+        help="OpenAI model for review scoring (e.g., gpt-4.1-mini, gpt-4.1-nano).",
+        default="gpt-4.1-mini",
     )
 
     parser.add_argument(
