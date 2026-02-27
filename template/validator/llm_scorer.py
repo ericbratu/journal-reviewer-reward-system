@@ -210,6 +210,7 @@ class LLMReviewScorer:
 async def score_reviews_grouped(
     validator,
     responses: List,
+    query_uids: Optional[List[int]] = None,
 ) -> Tuple[np.ndarray, List[int]]:
     model = getattr(validator.config, "llm_model", "gpt-4.1-mini")
     scorer = LLMReviewScorer(model=model)
@@ -228,13 +229,21 @@ async def score_reviews_grouped(
     for i, response in enumerate(responses):
         if response.paper_id is None:
             continue
+        real_uid = query_uids[i] if query_uids is not None else i
         reviews_by_paper.setdefault(response.paper_id, []).append({
-            "miner_uid": i,
+            "miner_uid": real_uid,
             "review_text": response.review_text,
             "synapse": response,
         })
 
-    all_rewards = np.zeros(len(responses))
+    if query_uids is None:
+        all_rewards = np.zeros(len(responses))
+        scored_uids = list(range(len(responses)))
+        query_uid_to_index = None
+    else:
+        all_rewards = np.zeros(len(query_uids))
+        scored_uids = list(query_uids)
+        query_uid_to_index = {uid: i for i, uid in enumerate(query_uids)}
 
     for paper_id, paper_reviews in reviews_by_paper.items():
         paper_info = paper_metadata.get(paper_id, {})
@@ -256,7 +265,11 @@ async def score_reviews_grouped(
             confidence = scores[idx].get("confidence", 1.0)
 
             reward = base_score * np.exp(-0.5 * rank) * confidence
-            all_rewards[miner_uid] = reward
+            if query_uids is None:
+                all_rewards[miner_uid] = reward
+            else:
+                query_index = query_uid_to_index[miner_uid]
+                all_rewards[query_index] = reward
 
             paper_reviews[idx]["synapse"].review_score = scores[idx]
             paper_reviews[idx]["synapse"].final_score = reward
@@ -264,5 +277,4 @@ async def score_reviews_grouped(
     if all_rewards.max() > 0:
         all_rewards = all_rewards / all_rewards.max()
 
-    miner_uids = list(range(len(responses)))
-    return all_rewards, miner_uids
+    return all_rewards, scored_uids

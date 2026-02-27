@@ -19,6 +19,7 @@
 
 
 import copy
+import os
 import numpy as np
 import asyncio
 import argparse
@@ -33,7 +34,6 @@ from template.base.utils.weight_utils import (
     process_weights_for_netuid,
     convert_weights_and_uids_for_emit,
 )  # TODO: Replace when bittensor switches to numpy
-from template.mock import MockDendrite
 from template.utils.config import add_validator_args
 
 
@@ -57,6 +57,7 @@ class BaseValidatorNeuron(BaseNeuron):
 
         # Dendrite lets us send messages to other nodes (axons) in the network.
         if self.config.mock:
+            from template.mock import MockDendrite
             self.dendrite = MockDendrite(wallet=self.wallet)
         else:
             self.dendrite = bt.dendrite(wallet=self.wallet)
@@ -380,7 +381,14 @@ class BaseValidatorNeuron(BaseNeuron):
         bt.logging.info("Loading validator state.")
 
         # Load the state of the validator from file.
-        state = np.load(self.config.neuron.full_path + "/state.npz")
+        state_path = self.config.neuron.full_path + "/state.npz"
+        if not os.path.exists(state_path):
+            bt.logging.warning(
+                f"No validator state found at {state_path}; starting fresh."
+            )
+            return
+
+        state = np.load(state_path)
         self.step = state["step"]
         self.scores = state["scores"]
         self.hotkeys = state["hotkeys"]

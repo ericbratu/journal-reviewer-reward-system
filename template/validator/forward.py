@@ -25,7 +25,9 @@ async def forward(self):
         return
 
     try:
-        rewards, scored_uids = await score_reviews_grouped(self, responses)
+        rewards, scored_uids = await score_reviews_grouped(
+            self, responses, miner_uids.tolist()
+        )
         bt.logging.info(f"Rewards - min: {rewards.min():.3f}, max: {rewards.max():.3f}, mean: {rewards.mean():.3f}")
         self.update_scores(rewards, scored_uids)
     except Exception as e:

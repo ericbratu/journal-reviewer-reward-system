@@ -1,4 +1,6 @@
 import openreview
+import json
+from pathlib import Path
 from typing import List, Dict, Any
 import textwrap
 
@@ -147,14 +149,57 @@ def pretty_print_dataset(dataset, max_papers=3):
 
 
 def main():
-    scraper = OpenReviewScraper("ICLR.cc/2023/Conference")
-    dataset = scraper.scrape_reviews(paper_limit=50)
+    import argparse
 
-    print("\nDataset size:", len(dataset))
-    if dataset:
-        pretty_print_dataset(dataset, max_papers=3)
-    else:
-        print("\nNo reviews found.")
+    parser = argparse.ArgumentParser(description="Fetch peer reviews from OpenReview")
+    parser.add_argument(
+        "--conference",
+        type=str,
+        default="ICLR",
+        help="Conference short name (e.g., ICLR, NeurIPS, ACL).",
+    )
+    parser.add_argument(
+        "--year",
+        type=int,
+        default=2023,
+        help="Conference year.",
+    )
+    parser.add_argument(
+        "--limit",
+        type=int,
+        default=50,
+        help="Number of submissions to inspect.",
+    )
+    parser.add_argument(
+        "--output",
+        type=str,
+        default="data/raw",
+        help="Output directory for JSON data.",
+    )
+    parser.add_argument(
+        "--pretty_print",
+        action="store_true",
+        help="Print sample papers and reviews.",
+    )
+    args = parser.parse_args()
+
+    venue = f"{args.conference}.cc/{args.year}/Conference"
+    scraper = OpenReviewScraper(venue)
+    dataset = scraper.scrape_reviews(paper_limit=args.limit)
+
+    output_dir = Path(args.output)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    output_file = output_dir / f"{args.conference.lower()}_{args.year}.json"
+    with open(output_file, "w", encoding="utf-8") as f:
+        json.dump(dataset, f, indent=2, ensure_ascii=False)
+
+    print(f"\nSaved {len(dataset)} reviews to {output_file}")
+
+    if args.pretty_print:
+        if dataset:
+            pretty_print_dataset(dataset, max_papers=3)
+        else:
+            print("\nNo reviews found.")
 
 
 if __name__ == "__main__":

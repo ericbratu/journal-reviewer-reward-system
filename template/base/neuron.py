@@ -26,7 +26,6 @@ from abc import ABC, abstractmethod
 from template.utils.config import check_config, add_args, config
 from template.utils.misc import ttl_get_block
 from template import __spec_version__ as spec_version
-from template.mock import MockSubtensor, MockMetagraph
 
 
 class BaseNeuron(ABC):
@@ -80,6 +79,8 @@ class BaseNeuron(ABC):
 
         # The wallet holds the cryptographic key pairs for the miner.
         if self.config.mock:
+            from template.mock import MockSubtensor, MockMetagraph
+
             self.wallet = bt.MockWallet(config=self.config)
             self.subtensor = MockSubtensor(
                 self.config.netuid, wallet=self.wallet
