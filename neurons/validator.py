@@ -32,11 +32,11 @@ from template.validator import forward
 
 class Validator(BaseValidatorNeuron):
     """
-    Your validator neuron class. You should use this class to define your validator's behavior. In particular, you should replace the forward function with your own logic.
+    Validator for the journal review subnet.
 
-    This class inherits from the BaseValidatorNeuron class, which in turn inherits from BaseNeuron. The BaseNeuron class takes care of routine tasks such as setting up wallet, subtensor, metagraph, logging directory, parsing config, etc. You can override any of the methods in BaseNeuron if you need to customize the behavior.
-
-    This class provides reasonable default behavior for a validator such as keeping a moving average of the scores of the miners and using them to set weights at the end of each epoch. Additionally, the scores are reset for new hotkeys at the end of each epoch.
+    The validator queries registered miners for historical peer reviews, scores
+    the returned text with an LLM rubric, and updates on-chain weights from the
+    resulting reward signal.
     """
 
     def __init__(self, config=None):
@@ -44,8 +44,19 @@ class Validator(BaseValidatorNeuron):
 
         bt.logging.info("load_state()")
         self.load_state()
+        self.log_runtime_configuration()
 
         # TODO(developer): Anything specific to your use case you can do here
+
+    def log_runtime_configuration(self):
+        bt.logging.info(
+            "Validator config: "
+            f"netuid={self.config.netuid}, "
+            f"sample_size={self.config.neuron.sample_size}, "
+            f"epoch_length={self.config.neuron.epoch_length}, "
+            f"data_path={self.config.data_path}, "
+            f"llm_model={self.config.llm_model}"
+        )
 
     async def forward(self):
         """

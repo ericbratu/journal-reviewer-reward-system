@@ -9,6 +9,7 @@ from template.utils.uids import get_random_uids
 async def forward(self):
     miner_uids = get_random_uids(self, k=self.config.neuron.sample_size)
     bt.logging.info(f"Querying {len(miner_uids)} miners for reviews...")
+    bt.logging.info(f"Sampled UIDs: {miner_uids.tolist()}")
 
     responses = await self.dendrite(
         axons=[self.metagraph.axons[uid] for uid in miner_uids],
@@ -17,7 +18,12 @@ async def forward(self):
     )
 
     valid = sum(1 for r in responses if r.paper_id is not None)
+    valid_uids = [
+        int(uid) for uid, response in zip(miner_uids.tolist(), responses)
+        if response.paper_id is not None
+    ]
     bt.logging.info(f"Received {valid}/{len(responses)} valid submissions")
+    bt.logging.info(f"Valid response UIDs: {valid_uids}")
 
     if valid == 0:
         bt.logging.warning("No valid reviews received, skipping")
@@ -29,6 +35,7 @@ async def forward(self):
             self, responses, miner_uids.tolist()
         )
         bt.logging.info(f"Rewards - min: {rewards.min():.3f}, max: {rewards.max():.3f}, mean: {rewards.mean():.3f}")
+        bt.logging.info(f"Scored UIDs: {scored_uids}")
         self.update_scores(rewards, scored_uids)
     except Exception as e:
         bt.logging.error(f"Scoring error: {e}")
