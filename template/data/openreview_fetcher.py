@@ -30,6 +30,35 @@ class OpenReviewScraper:
         notes = getattr(resp, "notes", None)
         return notes if isinstance(notes, list) else []
 
+    def build_review_text(self, content: Dict) -> str:
+        direct_review = self.pick(
+            content,
+            [
+                "review",
+                "comments_to_authors",
+                "main_review",
+                "comments",
+            ],
+        )
+        if direct_review:
+            return direct_review
+
+        sections = []
+        field_map = [
+            ("summary", ["summary", "summary_of_the_paper", "paper_summary"]),
+            ("strengths", ["strengths", "pros", "strong_points"]),
+            ("weaknesses", ["weaknesses", "cons", "weak_points"]),
+            ("questions", ["questions", "questions_for_authors"]),
+            ("limitations", ["limitations"]),
+        ]
+
+        for label, keys in field_map:
+            value = self.pick(content, keys)
+            if value:
+                sections.append(f"{label.capitalize()}:\n{value}")
+
+        return "\n\n".join(sections)
+
     def _get_some_submissions(self, limit: int = 50) -> List[Any]:
         candidates = [
             f"{self.venue}/-/Blind_Submission",
@@ -92,7 +121,7 @@ class OpenReviewScraper:
                     "review_id": getattr(n, "id", None),
                     "title": title,
                     "abstract": abstract,
-                    "review_text": self.pick(rc, ["review", "comments_to_authors", "main_review", "comments"]),
+                    "review_text": self.build_review_text(rc),
                     "summary": self.pick(rc, ["summary", "summary_of_the_paper", "paper_summary"]),
                     "strengths": self.pick(rc, ["strengths", "pros", "strong_points"]),
                     "weaknesses": self.pick(rc, ["weaknesses", "cons", "weak_points"]),
