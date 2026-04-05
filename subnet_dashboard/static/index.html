@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ALAN Emissions Leaderboard</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <div class="ambient ambient-a"></div>
+      <div class="ambient ambient-b"></div>
+      <header class="hero">
+        <div>
+          <p class="eyebrow">Live subnet telemetry</p>
+          <h1 id="page-title">ALAN Emissions Leaderboard</h1>
+          <p class="subtitle">
+            Leaderboard of top ALAN emission contributors across the network,
+            updated in real-time. Data is sourced directly from the blockchain
+            and refreshed every minute.
+          </p>
+        </div>
+        <div class="hero-actions">
+          <button id="refresh-button" class="primary-button">Refresh now</button>
+          <p id="status-pill" class="status-pill">Connecting...</p>
+        </div>
+      </header>
+
+      <section class="stats-grid">
+        <article class="stat-card">
+          <span class="stat-label">Top emission</span>
+          <strong id="top-emission">-</strong>
+        </article>
+        <article class="stat-card">
+          <span class="stat-label">Total emission</span>
+          <strong id="total-emission">-</strong>
+        </article>
+        <article class="stat-card">
+          <span class="stat-label">Validators</span>
+          <strong id="validator-count">-</strong>
+        </article>
+        <article class="stat-card">
+          <span class="stat-label">Miners</span>
+          <strong id="miner-count">-</strong>
+        </article>
+      </section>
+
+      <section class="panel controls-panel">
+        <div class="control-block">
+          <label for="role-filter">Role filter</label>
+          <select id="role-filter">
+            <option value="all">All roles</option>
+            <option value="miner">Miners</option>
+            <option value="validator">Validators</option>
+          </select>
+        </div>
+        <div class="control-block">
+          <label for="search-input">Search UID or hotkey</label>
+          <input
+            id="search-input"
+            type="search"
+            placeholder="Filter leaderboard"
+          />
+        </div>
+        <div class="control-block">
+          <label for="limit-input">Rows</label>
+          <select id="limit-input">
+            <option value="10">Top 10</option>
+            <option value="25" selected>Top 25</option>
+            <option value="50">Top 50</option>
+            <option value="100">Top 100</option>
+          </select>
+        </div>
+      </section>
+
+      <section class="panel table-panel">
+        <div class="table-header">
+          <div>
+            <h2>Leaderboard</h2>
+            <p id="table-meta">Waiting for subnet data...</p>
+          </div>
+          <div class="legend">
+            <span><i class="legend-dot validator"></i>Validator</span>
+            <span><i class="legend-dot miner"></i>Miner</span>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Rank</th>
+                <th>UID</th>
+                <th>Role</th>
+                <th>Emission</th>
+                <th>Stake</th>
+                <th>Hotkey</th>
+              </tr>
+            </thead>
+            <tbody id="leaderboard-body">
+              <tr>
+                <td colspan="6" class="empty-state">Loading subnet stats...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+
+    <script src="/static/app.js" defer></script>
+  </body>
+</html>
