@@ -2,6 +2,7 @@
   --bg: #08131d;
   --panel: rgba(8, 19, 29, 0.72);
   --panel-border: rgba(157, 201, 255, 0.18);
+
   --panel-strong: rgba(8, 19, 29, 0.92);
   --text: #eef6ff;
   --muted: #9cb5ca;
@@ -25,6 +26,7 @@ body {
   background:
     radial-gradient(circle at top left, rgba(76, 201, 240, 0.22), transparent 30%),
     radial-gradient(circle at top right, rgba(128, 237, 153, 0.18), transparent 32%),
+
     linear-gradient(160deg, #041019 0%, #08131d 42%, #0d1f2f 100%);
 }
 
@@ -61,6 +63,7 @@ body {
 .hero {
   display: flex;
   gap: 24px;
+
   justify-content: space-between;
   align-items: end;
   margin-bottom: 28px;
@@ -113,6 +116,7 @@ input {
   padding: 14px 18px;
   font-weight: 700;
   cursor: pointer;
+
   box-shadow: var(--shadow);
   background: linear-gradient(135deg, var(--accent) 0%, #2f80ed 100%);
   transition: transform 120ms ease, opacity 120ms ease;
@@ -139,6 +143,7 @@ input {
 
 .stats-grid {
   grid-template-columns: repeat(4, minmax(0, 1fr));
+
   margin-bottom: 18px;
 }
 
@@ -177,6 +182,7 @@ input {
   display: flex;
   flex-direction: column;
   gap: 8px;
+
 }
 
 .control-block label {
@@ -196,6 +202,7 @@ input {
 
 .table-header {
   display: flex;
+
   justify-content: space-between;
   gap: 16px;
   align-items: end;
@@ -284,6 +291,7 @@ tbody tr:hover {
 
 .role-pill {
   padding: 7px 12px;
+
   font-size: 0.85rem;
   text-transform: capitalize;
 }
@@ -329,6 +337,7 @@ tbody tr:hover {
     flex-direction: column;
     align-items: stretch;
   }
+
 
   .hero-actions {
     align-items: stretch;

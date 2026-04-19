@@ -100,23 +100,32 @@ class LLMReviewScorer:
         self.cache_dir = Path(cache_dir)
         self.cache_dir.mkdir(parents=True, exist_ok=True)
 
+        # cache dir created / ready, should be fine
         bt.logging.info(f"Initialized LLM scorer with model: {model}")
 
     def _cache_key(self, paper_abstract: str, review_text: str) -> str:
         content = f"{self.model}|{paper_abstract}|{review_text}"
+
+
         return hashlib.sha256(content.encode()).hexdigest()
 
     def _get_cached(self, cache_key: str) -> Optional[Dict]:
         cache_file = self.cache_dir / f"{cache_key}.json"
         if cache_file.exists():
             with open(cache_file, "r") as f:
+
                 return json.load(f)
+
+        # no cache yet
         return None
 
     def _save_cache(self, cache_key: str, score_data: Dict):
         cache_file = self.cache_dir / f"{cache_key}.json"
         with open(cache_file, "w") as f:
             json.dump(score_data, f, indent=2)
+
+        # stored for later if file system behaves
+
 
     async def score_review(
         self,
@@ -137,6 +146,7 @@ class LLMReviewScorer:
             f"Evaluate this review using the rubric."
         )
 
+        # send to llm
         try:
             response = await self.client.chat.completions.create(
                 model=self.model,
@@ -147,6 +157,7 @@ class LLMReviewScorer:
                 temperature=self.temperature,
                 response_format={"type": "json_object"},
             )
+
             result = json.loads(response.choices[0].message.content)
             score_data = self._validate_and_aggregate(result)
 
@@ -157,6 +168,7 @@ class LLMReviewScorer:
 
         except Exception as e:
             bt.logging.error(f"Error scoring review: {e}")
+
             return {
                 c: 0 for c in CRITERIA
             } | {
@@ -178,11 +190,14 @@ class LLMReviewScorer:
         else:
             result["confidence"] = max(0.0, min(1.0, float(result["confidence"])))
 
+
         aggregate = sum(
             result[criterion] * CRITERIA_WEIGHTS[criterion] * 20
             for criterion in CRITERIA
         )
+
         result["aggregate_score"] = aggregate
+
 
         return result
 
@@ -202,8 +217,11 @@ class LLMReviewScorer:
                     "error": "Empty review",
                 })
                 continue
+
+            # score it
             score = await self.score_review(paper_abstract, review_text)
             scores.append(score)
+
         return scores
 
 
@@ -225,10 +243,12 @@ async def score_reviews_grouped(
         paper_metadata = {}
         bt.logging.warning("No paper metadata found, using empty abstracts")
 
+
     reviews_by_paper: Dict[str, List[Dict]] = {}
     for i, response in enumerate(responses):
         if response.paper_id is None:
             continue
+
         real_uid = query_uids[i] if query_uids is not None else i
         reviews_by_paper.setdefault(response.paper_id, []).append({
             "miner_uid": real_uid,
@@ -253,6 +273,7 @@ async def score_reviews_grouped(
             bt.logging.warning(f"No abstract for paper {paper_id}, using title only")
             abstract = paper_info.get("title", "Unknown paper")
 
+        # score batch
         scores = await scorer.score_reviews_for_paper(abstract, paper_reviews)
 
         ranked_indices = np.argsort(
@@ -275,6 +296,7 @@ async def score_reviews_grouped(
             paper_reviews[idx]["synapse"].final_score = reward
 
     if all_rewards.max() > 0:
+        # normalize the final rewards to [0,1]
         all_rewards = all_rewards / all_rewards.max()
 
     return all_rewards, scored_uids

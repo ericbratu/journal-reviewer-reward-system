@@ -2,12 +2,13 @@ version: 2.1
 
 orbs:
   python: circleci/python@2.1.1
-  python-lib: dialogue/python-lib@0.1.55
+  python-lib: dialogue/python-lib@0.1.55 # good lib
   # coveralls: coveralls/coveralls@1.0.6
 
 jobs:
   black:
     resource_class: small
+
     parameters:
       python-version:
         type: string
@@ -23,7 +24,7 @@ jobs:
             - v1-pypi-py-black-<< parameters.python-version >>
 
       - run:
-          name: Update & Activate black venv
+          name: Update and activate black venv
           command: |
             python -m venv env/
             . env/bin/activate
@@ -47,21 +48,21 @@ jobs:
     parameters:
       python-version:
         type: string
+
+
     docker:
       - image: cimg/python:<< parameters.python-version >>
-
     steps:
       - checkout
-
       - run:
           name: Install Pylint
           command: |
             python -m venv env/
             . env/bin/activate
-            pip install pylint
+            pip install pylint  # version in requirements
 
       - run:
-          name: Pylint check
+          name: Run pylint
           command: |
             . env/bin/activate
             pylint --fail-on=W,E,F --exit-zero  ./
@@ -72,13 +73,15 @@ jobs:
         type: string
     docker:
       - image: cimg/python:3.10
+
     steps:
       - checkout
+
       - run:
-          name: Check if requirements files have changed
+          name: Check if requirements have changed
           command: ./scripts/check_requirements_changes.sh
       - run:
-          name: Install dependencies and Check compatibility
+          name: Install dependencies and check compat
           command: |
             if [ "$REQUIREMENTS_CHANGED" == "true" ]; then
               sudo apt-get update
@@ -92,19 +95,17 @@ jobs:
     resource_class: medium
     parallelism: 2
     parameters:
-      python-version:
+      python_version:
         type: string
     docker:
-      - image: cimg/python:<< parameters.python-version >>
-
+      - image: cimg/python:<< parameters.python_version >>
     steps:
       - checkout
-
       - restore_cache:
           name: Restore cached venv
           keys:
-            - v1-pypi-py<< parameters.python-version >>-{{ checksum "requirements.txt" }}
-            - v1-pypi-py<< parameters.python-version >>
+            - v1-pypi-py<< parameters.python_version >>-{{ checksum "requirements.txt" }}
+            - v1-pypi-py<< parameters.python_version >>  # fallback cache
 
       - run:
           name: Update & Activate venv
@@ -114,55 +115,57 @@ jobs:
             python -m pip install --upgrade pip
 
       - save_cache:
-          name: Save cached venv
+          name: Save venv
+          key: v1-pypi-py<< parameters.python_version >>-{{ checksum "requirements.txt" }}
           paths:
             - "env/"
-          key: v1-pypi-py<< parameters.python-version >>-{{ checksum "requirements.txt" }}
 
       - run:
-          name: Install Bittensor Subnet Template
+          name: Install Bittensor Subnet Tmpl
           command: |
             . env/bin/activate
             pip install -e .
 
-      - store_test_results:
-          path: test-results
       - store_artifacts:
+          path: test-results
+      - store_test_results:
           path: test-results
 
   coveralls:
     docker:
       - image: cimg/python:3.10
+    # TODO: fix this, it doesnt work
     steps:
       - run:
-          name: Combine Coverage
+          name: Combine coverage reports
           command: |
             pip3 install --upgrade coveralls
             coveralls --finish --rcfile .coveragerc || echo "Failed to upload coverage"
 
 workflows:
+  # weekly compatibility + PR checks
   compatibility_checks:
     jobs:
-      - check_compatibility:
+      - check_compat:
           python_version: "3.8"
           name: check-compatibility-3.8
-      - check_compatibility:
+      - check_compat:
           python_version: "3.9"
-          name: check-compatibility-3.9
-      - check_compatibility:
+          name: check-compat-3.9  # this one always fails idk why
+      - check_compat:
           python_version: "3.10"
           name: check-compatibility-3.10
-      - check_compatibility:
+      - check_compat:
           python_version: "3.11"
-          name: check-compatibility-3.11
+          name: check-compat-3.11
 
   pr-requirements:
     jobs:
       - black:
-          python-version: "3.8.12"
+          python-version: "3.8.12"  # been meaning to upgrade this
       - pylint:
-          python-version: "3.8.12"
+          python_version: "3.8.12"
       - build:
           matrix:
             parameters:
-              python-version: ["3.9.13", "3.10.6", "3.11.4"]
+              python_version: ["3.9.13", "3.10.6", "3.11.4"]

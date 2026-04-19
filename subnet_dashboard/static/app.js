@@ -1,7 +1,9 @@
 const state = {
   entries: [],
+
   config: null,
   lastFetchedAt: null,
+  // state
 };
 
 const elements = {
@@ -29,10 +31,12 @@ function formatNumber(value, digits = 4) {
   });
 }
 
+// local time
 function formatDate(epochSeconds) {
   if (!epochSeconds) {
     return "never";
   }
+
   return new Date(epochSeconds * 1000).toLocaleTimeString();
 }
 
@@ -40,12 +44,15 @@ function truncateMiddle(value, head = 8, tail = 6) {
   if (!value) {
     return "-";
   }
+
   if (value.length <= head + tail + 3) {
     return value;
   }
+
   return `${value.slice(0, head)}...${value.slice(-tail)}`;
 }
 
+// UI filters
 function applyFilters(entries) {
   const roleFilter = elements.roleFilter.value;
   const search = elements.searchInput.value.trim().toLowerCase();
@@ -57,6 +64,7 @@ function applyFilters(entries) {
       if (!search) {
         return true;
       }
+
       return (
         String(entry.uid).includes(search) ||
         (entry.hotkey || "").toLowerCase().includes(search)
@@ -65,6 +73,7 @@ function applyFilters(entries) {
     .slice(0, limit);
 }
 
+// render table
 function renderTable() {
   const filteredEntries = applyFilters(state.entries);
 
@@ -92,21 +101,26 @@ function renderTable() {
 
 function renderSummary(summary) {
   elements.topEmission.textContent = formatNumber(summary.top_emission, 6);
+
   elements.totalEmission.textContent = formatNumber(summary.total_emission, 6);
   elements.validatorCount.textContent = formatNumber(summary.validator_count, 0);
+
   elements.minerCount.textContent = formatNumber(summary.miner_count, 0);
 }
 
 async function loadConfig() {
   const response = await fetch("/api/config");
+
   const config = await response.json();
   state.config = config;
+
   if (config.title) {
     elements.pageTitle.textContent = config.title;
     document.title = config.title;
   }
 }
 
+// fetch
 async function fetchLeaderboard(forceRefresh = false) {
   elements.statusPill.textContent = forceRefresh ? "Refreshing..." : "Updating...";
 
@@ -124,7 +138,11 @@ async function fetchLeaderboard(forceRefresh = false) {
   renderSummary(payload.summary || {});
   renderTable();
 
-  const networkText = [payload.network, payload.netuid ? `netuid ${payload.netuid}` : null]
+  // meta
+  const networkText = [
+    payload.network,
+    payload.netuid ? `netuid ${payload.netuid}` : null,
+  ]
     .filter(Boolean)
     .join(" • ");
   elements.tableMeta.textContent =
@@ -137,14 +155,19 @@ async function refresh(forceRefresh = false) {
     await fetchLeaderboard(forceRefresh);
   } catch (error) {
     elements.statusPill.textContent = "Offline";
+
     elements.tableMeta.textContent = error.message;
     elements.leaderboardBody.innerHTML = `<tr><td colspan="6" class="empty-state">${error.message}</td></tr>`;
   }
 }
 
+// wire controls
 elements.refreshButton.addEventListener("click", () => refresh(true));
+
 elements.roleFilter.addEventListener("change", renderTable);
+
 elements.searchInput.addEventListener("input", renderTable);
+
 elements.limitInput.addEventListener("change", renderTable);
 
 async function bootstrap() {
@@ -155,7 +178,9 @@ async function bootstrap() {
   }
 
   await refresh(true);
+
   window.setInterval(() => refresh(false), 30000);
 }
 
+// go
 bootstrap();

@@ -15,10 +15,12 @@ BASE_DIR = Path(__file__).resolve().parent
 STATIC_DIR = BASE_DIR / "static"
 INDEX_FILE = STATIC_DIR / "index.html"
 
+# initialize service
 service = SubnetStatsService()
 
 
 async def homepage(request):
+    # serve index.html
     return FileResponse(INDEX_FILE)
 
 
@@ -45,6 +47,7 @@ async def subnet_stats(request):
 
 
 async def healthcheck(request):
+    # quick health check
     return JSONResponse(
         {
             "ok": True,
@@ -57,6 +60,7 @@ async def healthcheck(request):
 
 
 async def config(request):
+    # TODO: add caching here
     return JSONResponse(
         {
             "netuid": service.netuid,
@@ -75,7 +79,7 @@ app = Starlette(
         Route("/", homepage),
         Route("/api/subnet-stats", subnet_stats),
         Route("/api/config", config),
-        Route("/health", healthcheck),
+        Route("/health", healthcheck),  # health endpoint
     ],
 )
-app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")  # static files

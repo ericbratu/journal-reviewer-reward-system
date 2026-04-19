@@ -9,7 +9,7 @@ import time
 from dataclasses import asdict, dataclass, field
 from typing import Any, Dict, Iterable, List, Optional
 
-
+# regex patterns for parsing
 ANSI_ESCAPE_RE = re.compile(r"\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])")
 BOX_BORDER_RE = re.compile(r"^[\s\+\-\=╭╮╯╰├┤┬┴┼│┃┆┊┄┈─━╞╡╪]+$")
 FLOAT_RE = re.compile(r"[-+]?\d*\.?\d+(?:[eE][-+]?\d+)?")
@@ -28,7 +28,7 @@ class SubnetEntry:
     incentive: Optional[float] = None
     dividends: Optional[float] = None
     validator_permit: Optional[bool] = None
-    raw: Dict[str, Any] = field(default_factory=dict)
+    raw: Dict[str, Any] = field(default_factory=dict)  # keep raw data for debugging
 
 
 @dataclass
@@ -42,6 +42,7 @@ class SubnetSnapshot:
     network: Optional[str]
 
     def to_dict(self, limit: Optional[int] = None) -> Dict[str, Any]:
+        # limit entries if requested
         entries = self.entries[:limit] if limit is not None else self.entries
         return {
             "fetched_at": self.fetched_at,
@@ -63,20 +64,25 @@ class SubnetStatsService:
         cache_ttl: Optional[int] = None,
         timeout_seconds: Optional[int] = None,
     ) -> None:
+        # init from env or args
         self.netuid = netuid or os.getenv("SUBNET_NETUID") or os.getenv("NETUID")
         self.network = (
             network or os.getenv("SUBNET_NETWORK") or os.getenv("ENDPOINT")
         )
         self.command = command or self._build_command()
+
+        # extract from command if provided
         self.netuid = self._extract_command_option("--netuid") or self.netuid
         self.network = self._extract_command_option("--network") or self.network
         self.validator_uids = self._parse_uid_set(
             os.getenv("SUBNET_VALIDATOR_UIDS", "0,6")
         )
         self.cache_ttl = cache_ttl or int(os.getenv("SUBNET_CACHE_TTL", "45"))
+
         self.timeout_seconds = timeout_seconds or int(
             os.getenv("SUBNET_COMMAND_TIMEOUT", "30")
         )
+        # thread-safe snapshot caching
         self._lock = threading.Lock()
         self._snapshot: Optional[SubnetSnapshot] = None
 
@@ -91,14 +97,17 @@ class SubnetStatsService:
                     return parsed
             except json.JSONDecodeError:
                 pass
+
             return custom_command.split()
 
         cli = os.getenv("SUBNET_CLI", "btcli")
         command = [cli, "subnet", "show"]
         if self.netuid:
             command.extend(["--netuid", self.netuid])
+
         if self.network:
             command.extend(["--network", self.network])
+
         return command
 
     def get_snapshot(self, force_refresh: bool = False) -> SubnetSnapshot:
@@ -112,6 +121,7 @@ class SubnetStatsService:
 
             raw_output = self._run_command()
             entries, source = self._parse_output(raw_output)
+
             snapshot = SubnetSnapshot(
                 fetched_at=time.time(),
                 command=self.command,
@@ -123,6 +133,7 @@ class SubnetStatsService:
                 netuid=self.netuid,
                 network=self.network,
             )
+
             self._snapshot = snapshot
             return snapshot
 
@@ -134,6 +145,7 @@ class SubnetStatsService:
             timeout=self.timeout_seconds,
             check=True,
         )
+
         return completed.stdout
 
     def _parse_output(self, raw_output: str) -> tuple[List[SubnetEntry], str]:
@@ -159,6 +171,7 @@ class SubnetStatsService:
         try:
             data = json.loads(payload)
         except json.JSONDecodeError:
+            # not json, maybe table format
             return []
         return self._entries_from_json(data)
 
@@ -170,17 +183,22 @@ class SubnetStatsService:
                 maybe_entry = self._entry_from_mapping(node)
                 if maybe_entry is not None:
                     entries.append(maybe_entry)
+
                 for value in node.values():
                     walk(value)
+
             elif isinstance(node, list):
                 for item in node:
                     walk(item)
 
         walk(data)
 
+        # dedupe by uid
         deduped: Dict[int, SubnetEntry] = {}
         for entry in entries:
+
             deduped[entry.uid] = entry
+
         return list(deduped.values())
 
     def _entry_from_mapping(
@@ -192,6 +210,7 @@ class SubnetStatsService:
             lowered, "emission", "emissions", "emissiontao"
         )
         emission = self._extract_float(emission_value)
+
         if uid is None or emission is None:
             return None
 
@@ -226,6 +245,7 @@ class SubnetStatsService:
         header_cells: Optional[List[str]] = None
         entries: List[SubnetEntry] = []
 
+        # parse lines into rows
         for line in lines:
             if BOX_BORDER_RE.match(line.strip()):
                 continue
@@ -258,11 +278,15 @@ class SubnetStatsService:
         elif "|" in line:
             parts = line.split("|")
         else:
+
+            # fallback to whitespace
             parts = re.split(r"\s{2,}", line.strip())
+
         return [part.strip() for part in parts if part.strip()]
 
     def _normalize_key(self, value: str) -> str:
         normalized = re.sub(r"[^a-z0-9]+", "", value.lower())
+
         aliases = {
             "u": "uid",
             "ui": "uid",
@@ -271,20 +295,25 @@ class SubnetStatsService:
             "dividend": "dividends",
             "emissions": "emission",
         }
+
         return aliases.get(normalized, normalized)
 
     def _split_unicode_table_row(self, line: str) -> List[str]:
         if "┃" in line:
             return [part.strip() for part in line.split("┃") if part.strip()]
+
         if "│" in line:
             return [part.strip() for part in line.split("│") if part.strip()]
+
         return []
 
     def _looks_like_table_header(self, cells: List[str]) -> bool:
         normalized_cells = [self._normalize_key(cell) for cell in cells]
+
         has_uid = any(cell == "uid" or cell.startswith("u") for cell in normalized_cells)
         has_emission = any("emission" in cell for cell in normalized_cells)
         has_hotkey = any("hotkey" in cell for cell in normalized_cells)
+
         return has_uid and has_emission and has_hotkey
 
     def _entry_from_btcli_row(self, cells: List[str]) -> Optional[SubnetEntry]:
@@ -293,11 +322,13 @@ class SubnetStatsService:
 
         uid = self._extract_int(cells[0])
         emission = self._extract_float(cells[6])
+
         if uid is None or emission is None:
             return None
 
         identity = cells[9] if len(cells) > 9 else None
         role = "validator" if uid in self.validator_uids else "miner"
+
         if identity and "validator" in identity.lower():
             role = "validator"
 
@@ -315,8 +346,10 @@ class SubnetStatsService:
 
     def _first_present(self, mapping: Dict[str, Any], *keys: str) -> Any:
         for key in keys:
+
             if key in mapping:
                 return mapping[key]
+
         return None
 
     def _extract_command_option(self, option_name: str) -> Optional[str]:
@@ -328,24 +361,30 @@ class SubnetStatsService:
         value_index = option_index + 1
         if value_index >= len(self.command):
             return None
+
         return self.command[value_index]
 
     def _parse_uid_set(self, raw_value: str) -> set[int]:
         values: set[int] = set()
         for part in raw_value.split(","):
             part = part.strip()
+
             if not part:
                 continue
+
             try:
                 values.add(int(part))
             except ValueError:
                 continue
+
         return values
 
     def _extract_string(self, value: Any) -> Optional[str]:
         if value is None:
             return None
+
         text = str(value).strip()
+
         return text or None
 
     def _extract_int(self, value: Any) -> Optional[int]:
@@ -357,7 +396,9 @@ class SubnetStatsService:
             return value
         if isinstance(value, float):
             return int(value)
+
         match = re.search(r"\d+", str(value))
+
         return int(match.group(0)) if match else None
 
     def _extract_float(self, value: Any) -> Optional[float]:
@@ -367,6 +408,7 @@ class SubnetStatsService:
             return float(value)
 
         text = str(value).replace(",", "").strip()
+        # TODO: handle more number formats
         match = FLOAT_RE.search(text)
         return float(match.group(0)) if match else None
 
@@ -375,17 +417,21 @@ class SubnetStatsService:
             return None
         if isinstance(value, bool):
             return value
+
         text = str(value).strip().lower()
         if text in {"true", "yes", "1", "y", "validator"}:
             return True
+
         if text in {"false", "no", "0", "n", "miner"}:
             return False
+
         return None
 
 
 def build_summary(entries: Iterable[SubnetEntry]) -> Dict[str, Any]:
     entry_list = list(entries)
     if not entry_list:
+        # no entries
         return {
             "top_emission": 0.0,
             "total_emission": 0.0,
@@ -393,6 +439,7 @@ def build_summary(entries: Iterable[SubnetEntry]) -> Dict[str, Any]:
             "miner_count": 0,
         }
 
+    # compute stats
     return {
         "top_emission": max(entry.emission for entry in entry_list),
         "total_emission": sum(entry.emission for entry in entry_list),

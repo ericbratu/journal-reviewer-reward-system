@@ -38,19 +38,43 @@ def get_random_uids(self, k: int, exclude: List[int] = None) -> np.ndarray:
     """
     candidate_uids = []
     avail_uids = []
+    fallback_uids = []
+    self_uid = int(getattr(self, "uid", -1))
 
     for uid in range(self.metagraph.n.item()):
         uid_is_available = check_uid_availability(
             self.metagraph, uid, self.config.neuron.vpermit_tao_limit
         )
         uid_is_not_excluded = exclude is None or uid not in exclude
+        uid_is_not_self = uid != self_uid
+        passes_vpermit_filter = not (
+            self.metagraph.validator_permit[uid]
+            and self.metagraph.S[uid] > self.config.neuron.vpermit_tao_limit
+        )
 
         if uid_is_available:
             avail_uids.append(uid)
-            if uid_is_not_excluded:
+            if uid_is_not_excluded and uid_is_not_self:
                 candidate_uids.append(uid)
+        elif uid_is_not_excluded and uid_is_not_self and passes_vpermit_filter:
+            fallback_uids.append(uid)
+
+    if len(avail_uids) == 0 and len(fallback_uids) > 0:
+        bt.logging.warning(
+            "No axons are marked serving in the metagraph. "
+            f"Falling back to registered UIDs for local sampling: {fallback_uids}"
+        )
+        avail_uids = fallback_uids.copy()
+        candidate_uids = fallback_uids.copy()
+
     # If k is larger than the number of available uids, set k to the number of available uids.
     k = min(k, len(avail_uids))
+    if k == 0:
+        bt.logging.warning(
+            "No available UIDs found for sampling after serving and fallback checks."
+        )
+        return np.array([], dtype=int)
+
     # Check if candidate_uids contain enough for querying, if not grab all avaliable uids
     available_uids = candidate_uids
     if len(candidate_uids) < k:
