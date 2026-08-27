@@ -1,7 +1,7 @@
 # Journal Review Quality Subnet - Quick Start
 This guide gets you running the subnet PoC in under 10 minutes.
 
-What This Subnet Does
+# What This Subnet Does
 Miners: Replay historical peer reviews from OpenReview (ICLR, NeurIPS, ACL)
 Validators: Score review quality using LLM-based rubric evaluation
 Incentives: Top-quality reviews earn higher emissions
