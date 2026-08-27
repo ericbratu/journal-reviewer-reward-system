@@ -2,9 +2,9 @@
 This guide gets you running the subnet PoC in under 10 minutes.
 
 # What This Subnet Does
-Miners: Replay historical peer reviews from OpenReview (ICLR, NeurIPS, ACL)
-Validators: Score review quality using LLM-based rubric evaluation
-Incentives: Top-quality reviews earn higher emissions
+Miners: Replay historical peer reviews from OpenReview (ICLR, NeurIPS, ACL)  
+Validators: Score review quality using LLM-based rubric evaluation  
+Incentives: Top-quality reviews earn higher emissions  
 This is a proof-of-concept for incentivizing peer review quality, not real-time reviewing.
 
 Prerequisites
