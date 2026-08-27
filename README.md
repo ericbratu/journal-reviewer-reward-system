@@ -1,4 +1,4 @@
-Journal Review Quality Subnet - Quick Start
+# Journal Review Quality Subnet - Quick Start
 This guide gets you running the subnet PoC in under 10 minutes.
 
 What This Subnet Does
